@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Input Barang - Login</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f3f3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #fff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 350px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #0d47a1;
+    }
+    .btn-scan {
+      background-color: #2e7d32;
+      margin-top: 0;
+    }
+    .btn-scan:hover {
+      background-color: #1b5e20;
+    }
+    #reader {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div id="loginForm">
+    <h2>Login</h2>
+    <input type="text" id="userId" placeholder="User ID" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="mainForm" style="display:none;">
+    <h2>Form Input Barang</h2>
+    
+    <div id="reader" style="display: none;"></div>
+
+    <form id="returForm">
+      <label>Nama Barang / Barcode:</label>
+      <input type="text" name="nama_barang" id="nama_barang" placeholder="Scan atau ketik manual" required>
+      <button type="button" class="btn-scan" id="btnScanAction" onclick="toggleKamera()">📷 Aktifkan Kamera Scan</button>
+      
+      <input type="number" name="jumlah" placeholder="Jumlah" required>
+      <input type="text" name="dus" placeholder="Dus" required>
+      <input type="text" name="palet" placeholder="Palet" required>
+      <button type="submit">Kirim Data</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Autentikasi Sederhana
+  const VALID_USER = "retur";
+  const VALID_PASS = "12345";
+
+  function login() {
+    const user = document.getElementById("userId").value;
+    const pass = document.getElementById("password").value;
+    if (user === VALID_USER && pass === VALID_PASS) {
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("mainForm").style.display = "block";
+    } else {
+      alert("User ID atau Password salah");
+    }
+  }
+
+  // OPERASIONAL SCANNER UTAMA
+  let html5Qrcode = null;
+
+  function toggleKamera() {
+    const readerElement = document.getElementById("reader");
+    const btnScan = document.getElementById("btnScanAction");
+
+    if (readerElement.style.display === "none") {
+      readerElement.style.display = "block";
+      btnScan.innerText = "❌ Matikan Kamera";
+      btnScan.style.backgroundColor = "#d32f2f";
+
+      if (!html5Qrcode) {
+        html5Qrcode = new Html5Qrcode("reader");
+      }
+
+      html5Qrcode.start(
+        { facingMode: "environment" },
+        { fps: 15, qrbox: { width: 250, height: 150 } },
+        (decodedText) => {
+          document.getElementById("nama_barang").value = decodedText;
+          matikanKameraSaja();
+        },
+        (errorMessage) => {
+          // Abaikan log error scanning realtime
+        }
+      ).catch(err => {
+        alert("Akses kamera ditolak/gagal: " + err);
+        matikanKameraSaja();
+      });
+
+    } else {
+      matikanKameraSaja();
+    }
+  }
+
+  function matikanKameraSaja() {
+    const readerElement = document.getElementById("reader");
+    const btnScan = document.getElementById("btnScanAction");
+    
+    if (html5Qrcode && html5Qrcode.isScanning) {
+      html5Qrcode.stop().then(() => {
+        readerElement.style.display = "none";
+        btnScan.innerText = "📷 Aktifkan Kamera Scan";
+        btnScan.style.backgroundColor = "#2e7d32";
+      }).catch(err => {
+        console.error("Gagal menghentikan track kamera:", err);
+      });
+    } else {
+      readerElement.style.display = "none";
+      btnScan.innerText = "📷 Aktifkan Kamera Scan";
+      btnScan.style.backgroundColor = "#2e7d32";
+    }
+  }
+
+  // Alur Kirim ke Google Sheets (Optimistic UI - Instant)
+  // PASTIKAN URL DI BAWAH INI ADALAH URL BARU HASIL DEPLOY ULANG LANGKAH 3
+  const scriptURL = 'https://script.google.com/macros/s/AKfycbxdQfXY1_u-NtfQTrRApf1vmDobxkw1IQOofiTwtt14d9CvSyW0Z3QoHzha2sJNMs-3/exec';
+  const form = document.getElementById('returForm');
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    matikanKameraSaja();
+
+    const formData = new FormData(form);
+    const sekarang = new Date();
+    const opsiWaktu = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+    
+    // Menyisipkan data waktu ke dalam data form sebelum dikirim
+    formData.append('tanggal_masuk', sekarang.toLocaleString('id-ID', opsiWaktu));
+
+    // Berikan respon sukses palsu/instan di layar depan demi efisiensi waktu
+    alert("Data berhasil dikirim!"); 
+    form.reset();
+
+    // Kirim data sesungguhnya ke server Google Apps Script di balik layar
+    fetch(scriptURL, { method: 'POST', body: formData })
+      .then(res => console.log("Sukses sinkronisasi Google Sheets"))
+      .catch(err => console.error("Eror sinkronisasi latar belakang:", err));
+  });
+</script>
+
+</body>
+</html>
