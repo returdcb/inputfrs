@@ -56,6 +56,12 @@
       margin-bottom: 15px;
       overflow: hidden;
     }
+    .user-info {
+      font-size: 14px;
+      color: #666;
+      text-align: right;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -69,6 +75,7 @@
   </div>
 
   <div id="mainForm" style="display:none;">
+    <div class="user-info" id="userDisplay">User: -</div>
     <h2>Form Input Barang</h2>
     
     <div id="reader" style="display: none;"></div>
@@ -80,21 +87,33 @@
       
       <input type="number" name="jumlah" placeholder="Jumlah" required>
       
-     
       <button type="submit">Kirim Data</button>
     </form>
   </div>
 </div>
 
 <script>
-  // Autentikasi Sederhana
-  const VALID_USER = "inputfrs";
-  const VALID_PASS = "12345";
+  // 1. DATA MASTER USER (Silahkan tambah atau ubah list user di sini)
+  const LIST_USER = {
+    "inputfrs": "12345",
+    "TIKO": "11234",
+    "FITRI": "11123",
+    "ADI": "11112"
+  };
 
+  // Variabel global untuk menyimpan siapa yang login
+  let currentUser = ""; 
+
+  // Fungsi Autentikasi Multi-User
   function login() {
-    const user = document.getElementById("userId").value;
+    const user = document.getElementById("userId").value.trim();
     const pass = document.getElementById("password").value;
-    if (user === VALID_USER && pass === VALID_PASS) {
+
+    // Cek apakah user ada di list dan password-nya cocok
+    if (LIST_USER[user] && LIST_USER[user] === pass) {
+      currentUser = user; // Simpan nama user aktif
+      document.getElementById("userDisplay").innerText = "Operator: " + currentUser;
+      
       document.getElementById("loginForm").style.display = "none";
       document.getElementById("mainForm").style.display = "block";
     } else {
@@ -157,8 +176,7 @@
     }
   }
 
-  // Alur Kirim ke Google Sheets (Optimistic UI - Instant)
-  // PASTIKAN URL DI BAWAH INI ADALAH URL BARU HASIL DEPLOY ULANG LANGKAH 3
+  // Alur Kirim ke Google Sheets
   const scriptURL = 'https://script.google.com/macros/s/AKfycbzuHyrCOJNojvhQslQSSYPnriPwdIiESeZhmyQKTiO5po7hDwaaaTq71eST2bCwuuN24A/exec';
   const form = document.getElementById('returForm');
 
@@ -170,14 +188,17 @@
     const sekarang = new Date();
     const opsiWaktu = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
     
-    // Menyisipkan data waktu ke dalam data form sebelum dikirim
+    // Menyisipkan data waktu ke dalam data form
     formData.append('tanggal_masuk', sekarang.toLocaleString('id-ID', opsiWaktu));
+    
+    // 2. OTOMATIS MENYISIPKAN NAMA USER KE DALAM DATA FORM YANG DIKIRIM
+    formData.append('operator', currentUser);
 
-    // Berikan respon sukses palsu/instan di layar depan demi efisiensi waktu
+    // Respon sukses instan di layar depan
     alert("Data berhasil dikirim!"); 
     form.reset();
 
-    // Kirim data sesungguhnya ke server Google Apps Script di balik layar
+    // Kirim data sesungguhnya ke server Google Apps Script
     fetch(scriptURL, { method: 'POST', body: formData })
       .then(res => console.log("Sukses sinkronisasi Google Sheets"))
       .catch(err => console.error("Eror sinkronisasi latar belakang:", err));
